@@ -3,6 +3,7 @@ import streamlit as st
 import matplotlib.pyplot as plt
 
 
+
 if "logged_in" not in st.session_state:
     st.error("Please Login First")
     st.stop()
@@ -10,7 +11,7 @@ if st.button("🚪 Logout"):
     st.session_state.logged_in = False
     st.switch_page("app.py")
 import streamlit as st
-import sqlite3
+from config import supabase
 import pandas as pd
 from io import BytesIO
 
@@ -20,8 +21,11 @@ st.title("📷 Face Attendance Dashboard")
 st_autorefresh(interval=5000, key="refresh")
 
 # Database Connection
-conn = sqlite3.connect("attendance.db")
-df = pd.read_sql_query("SELECT * FROM attendance", conn)
+response = supabase.table("attendance").select("*").execute()
+
+df = pd.DataFrame(response.data)
+if not df.empty:
+    df = df.sort_values(by=["date", "time"], ascending=False)
 
 search = st.text_input("🔍 Search Student")
 
@@ -55,7 +59,7 @@ with col3:
     today_count = len(df[df["date"] == today])
 
     st.metric("Today's Attendance", today_count)
-    last_record = df.iloc[-1]
+    last_record = df.iloc[0]
 
 st.info(
     f"🕒 Last Entry: {last_record['name']} at {last_record['time']}"
@@ -94,4 +98,3 @@ st.subheader("📈 Attendance Distribution")
 
 st.line_chart(attendance_count)
 
-conn.close()

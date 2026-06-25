@@ -1,3 +1,4 @@
+from config import supabase
 import email
 import sqlite3
 import cv2
@@ -9,8 +10,7 @@ from email.message import EmailMessage
 recognizer = cv2.face.LBPHFaceRecognizer_create()
 recognizer.read("trainer/trainer.yml")
 
-faceCascade = cv2.CascadeClassifier(
-    cv2.data.haarcascades +
+faceCascade = cv2.CascadeClassifier(  cv2.data.haarcascades +
     "haarcascade_frontalface_default.xml"
 )
 
@@ -83,14 +83,51 @@ Attendance Successfully Marked.
 
                 conn = sqlite3.connect("attendance.db")
                 cursor = conn.cursor()
+
+                today = now.strftime("%Y-%m-%d")
+
                 cursor.execute(
-                    "INSERT INTO attendance(name, date, time) VALUES (?, ?, ?)",
-                    (name, now.strftime("%Y-%m-%d"), now.strftime("%H:%M:%S"))
+                    "SELECT * FROM attendance WHERE name=? AND date=?",
+                    (name, today)
                 )
-                conn.commit()
+
+                record = cursor.fetchone()
+
+                if record is None:
+                    cursor.execute(
+                        "INSERT INTO attendance(name, date, time) VALUES (?, ?, ?)",
+                        (name, today, now.strftime("%H:%M:%S"))
+                    )
+                    conn.commit()
+                    print("Database Saved Successfully")
+                else:
+                    print("Attendance Already Marked Today")
+
                 conn.close()
 
-                print("Database Saved Successfully")
+                # Save to Supabase
+                try:
+                    today = now.strftime("%Y-%m-%d")
+
+                    existing = supabase.table("attendance").select("*").eq(
+                        "name", name
+                    ).eq(
+                        "date", today
+                    ).execute()
+
+                    if len(existing.data) == 0:
+                        supabase.table("attendance").insert({
+                            "name": name,
+                            "date": today,
+                            "time": now.strftime("%H:%M:%S")
+                        }).execute()
+                        print("Supabase Saved Successfully")
+                    else:
+                        print("Attendance Already Exists in Supabase")
+
+                except Exception as e:
+                    print("Supabase Error:", e)
+
                 print("CSV Saved Successfully")
             except Exception as e:
                 print("Save Error:", e)
