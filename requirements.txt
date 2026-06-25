@@ -4,3 +4,10 @@ openpyxl
 matplotlib
 streamlit-autorefresh
 opencv-contrib-python
+streamlit
+pandas
+openpyxl
+matplotlib
+streamlit-autorefresh
+opencv-contrib-python
+supabase==2.31.0
